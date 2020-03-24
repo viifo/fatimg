@@ -5,7 +5,7 @@
 #define FATIMG_FATIMG_H
 
 
-#define OK 1
+#define OK 0
 #define ERROR -1
 #define NO_FIND -2
 #define BAD_FORMAT -3

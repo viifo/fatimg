@@ -26,4 +26,6 @@ fatimg imgName.img -f 32 -s 528 -b boot.o
 
 ```
 
+**注意：写入的文件名没有做大小写转换**
+
 

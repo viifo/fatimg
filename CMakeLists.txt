@@ -4,5 +4,5 @@ project(fatimg C)
 set(CMAKE_C_STANDARD 99)
 
 # FAT12 镜像工具
-add_executable(fatimg main.c fat12img.c fat32img.c include/fatimg.h utils/fatUtil.c utils/formatUtil.c)
+add_executable(fatimg main.c fat12img.c include/fatimg.h utils/fatUtil.c utils/formatUtil.c fat32img.c)
 
