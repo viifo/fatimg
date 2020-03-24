@@ -44,7 +44,7 @@ unsigned int findEmptyCluster(FILE *fp, long fatPos, long fatSize, unsigned int 
         case FAT12: {
             // 计算一个FAT表有多少项表项并循环查找空值
             loopCount = (unsigned int)(fatSize / 1.5);
-            for(i = startNum; i < loopCount; i++) {
+            for(i = startNum; i <= loopCount; i ++) {
                 if(getNextClusterLinkNum(fp, fatPos, i, FAT12) == 0) {
                     return i;
                 }
@@ -67,15 +67,16 @@ unsigned int findEmptyCluster(FILE *fp, long fatPos, long fatSize, unsigned int 
  * @return 文件/目录簇链的下一簇号
  */
 unsigned int getNextClusterLinkNum(FILE* fp, long fatPos, unsigned int clusterNum, FAT_TYPE type) {
+    unsigned short nextClusterNum12 = 0;
     unsigned int nextClusterNum = 0;
     switch (type) {
         case FAT12: {
             // 获取FAT中的相对位移
             fseek(fp, (long)(fatPos + clusterNum * 1.5), SEEK_SET);
             // 读出两个字节（16位模式下为一个字）
-            fread(&nextClusterNum, 2, 1, fp);
+            fread(&nextClusterNum12, 2, 1, fp);
             // 偶数项取低 12 位，奇数项取高 12 位
-            nextClusterNum =  (nextClusterNum % 2 == 0 ? nextClusterNum & 0xFFF : nextClusterNum >> 4);
+            nextClusterNum =  (clusterNum % 2 == 0 ? nextClusterNum12 & 0xFFF : nextClusterNum12 >> 4);
         } break;
         case FAT32: {
 

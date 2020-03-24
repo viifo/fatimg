@@ -210,10 +210,10 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
     unsigned long fileSize = 0;
     char newFileName[12], *fileName;
     /** 拷贝数据临时中转数组 */
-    unsigned char tempData[BYTES_SECTOR];
+    unsigned char tempData[BYTES_SECTOR] = {0};
     unsigned short needSectors, remainingBytes;
     /** FAT文件簇链 */
-    unsigned short fileSectorList[TOTAL_SECTORS];
+    unsigned short fileSectorList[TOTAL_SECTORS] = {0};
 
     // 打开镜像文件
     // rb+ 以读写方式打开已存在的文件，若文件不存在，则打开失败
@@ -237,7 +237,7 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
         fileName = fileName + 1;
     }
 
-    // 若软盘镜像里存在同名文件，将此文件读出(获取文件大小)
+    // 若软盘镜像里存在同名文件，将此文件信息读出(获取文件大小)
     rootDirItemIndex = findFileInRootDir(ifp, fileName);
     if(rootDirItemIndex != NO_FIND) {
         fseek(ifp, ROOT_FIRST_SECTOR * BYTES_SECTOR + rootDirItemIndex * dirItemSize, SEEK_SET);
@@ -248,7 +248,7 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
 
     // ftell() 用于得到当前文件位置指针相对于文件首的偏移字节数
     // 获取要拷贝的文件大小(字节)
-    fileSize = fseek(fp, 0, SEEK_END), ftell(fp);
+    fileSize = (fseek(fp, 0, SEEK_END), ftell(fp));
     // 剩余空间不足（包括同名文件部分）
     if((dirItem.size + getFreeClusterNum(ifp, FAT_FIRST_SECTOR * BYTES_SECTOR,
             FAT_SECTOR_NUM * BYTES_SECTOR, FAT12) * BYTES_SECTOR) < fileSize) {
@@ -272,10 +272,10 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
     // 计算源文件所需扇区数
     needSectors = fileSize / BYTES_SECTOR + (remainingBytes > 0 ? 1 : 0);
 
-    fileSectorList[0] = findEmptyCluster(fp, FAT_FIRST_SECTOR * BYTES_SECTOR,
+    fileSectorList[0] = findEmptyCluster(ifp, FAT_FIRST_SECTOR * BYTES_SECTOR,
             FAT_SECTOR_NUM * BYTES_SECTOR, 2, FAT12);
     for(i = 1; i < needSectors; i++) {
-        fileSectorList[i] = findEmptyCluster(fp, FAT_FIRST_SECTOR * BYTES_SECTOR,
+        fileSectorList[i] = findEmptyCluster(ifp, FAT_FIRST_SECTOR * BYTES_SECTOR,
                 FAT_SECTOR_NUM * BYTES_SECTOR, fileSectorList[i - 1] + 1, FAT12);
         setNextClusterLinkNum(ifp, FAT_FIRST_SECTOR * BYTES_SECTOR,
                 (FAT_FIRST_SECTOR + FAT_SECTOR_NUM) * BYTES_SECTOR,fileSectorList[i - 1], fileSectorList[i], FAT12);
