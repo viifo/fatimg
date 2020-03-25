@@ -1,5 +1,14 @@
 # fat镜像工具 #
 
+## 编译fatimg ##
+```shell script
+# 进入fatimg目录
+cd /yourpath/fatimg
+
+# 编译生成可执行文件
+make
+```
+
 ## fatimg使用方法 ##
 ```
 Usage: fatimg <image file> [options]  

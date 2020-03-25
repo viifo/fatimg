@@ -50,6 +50,8 @@ int copyFileToFat12img(char*, char*, char);
 /****************************************************************
  * FAT 公共函数
  ****************************************************************/
+/** 字符串转大写字母 */
+char* strUpper(char* str);
 /** 获取FAT镜像文件类型 */
 FAT_TYPE getImageFatType(const char* path);
 /** 格式化时间为FAT时间格式 */

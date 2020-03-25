@@ -150,7 +150,7 @@ FAT_TYPE getImageFatType(const char* path) {
     // 此处存放着FAT12的文件系统类型名
     fseek(fp, 0x36, SEEK_SET);
     fread(&typeName, 8, 1, fp);
-    if (strstr(strupr(typeName), "FAT12") != NULL) {
+    if (strstr(strUpper(typeName), "FAT12") != NULL) {
         fclose(fp);
         return FAT12;
     }
@@ -159,11 +159,28 @@ FAT_TYPE getImageFatType(const char* path) {
     // 此处存放着FAT32的文件系统类型名
     fseek(fp, 0x52, SEEK_SET);
     fread(&typeName, 8, 1, fp);
-    if (strstr(strupr(typeName), "FAT32") != NULL) {
+    if (strstr(strUpper(typeName), "FAT32") != NULL) {
         fclose(fp);
         return FAT32;
     }
 
     return UNKOWN;
+}
+
+/**
+ * 字符串转大写字母
+ * @param str
+ * @return
+ */
+char* strUpper(char* str) {
+    int count = 0;
+    while (*str != '\0') {
+        if (*str >= 97 && *str <= 122) {
+            *str -= 32;
+        }
+        str ++;
+        count ++;
+    }
+    return str - count;
 }
 

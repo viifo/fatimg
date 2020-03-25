@@ -46,7 +46,6 @@ int main(int argc, char* argv[]) {
         // 0x00 - 普通文件，0x01 - 只读，0x02 - 隐藏，0x04 - 系统文件，0x10 - 目录
         type = getImageFatType(argv[1]);
         if (type == FAT12) {
-            printf("argv[1] = %s, argv[3] = %s\n", argv[1], argv[3]);
             i = copyFileToFat12img(argv[1], argv[3], 0);
         } else {
             printf("Bad FAT image format.\n");
