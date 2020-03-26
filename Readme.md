@@ -33,6 +33,9 @@ fatimg imgName.img
 # 创建一个自定义引导扇区的fat12镜像文件
 fatimg imgName.img -b boot.o
 
+# 复制一个文件到fat12镜像中
+fatimg imgName.img -cp yourfile
+
 # 创建一个 260M & 每簇8扇区 的FAT32的镜像文件
 fatimg imgName.img -f 32 -s 260 -sc 8
 
