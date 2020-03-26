@@ -44,12 +44,17 @@ int copyFileToFat12img(char*, char*, char);
 /****************************************************************
  * FAT32
  ****************************************************************/
-
+/** 创建空的fat32软盘镜像 */
+int createEmptyFat32img(char *imgPath, float size,  int cluster);
+/** 创建自定义引导扇区的fat32软盘镜像 */
+int createCustomBootFat32img(char *imgPath, char *bootPath, float size, int cluster);
 
 
 /****************************************************************
  * FAT 公共函数
  ****************************************************************/
+/** 随机产生一个分区序号 */
+unsigned int getVolumeID();
 /** 字符串转大写字母 */
 char* strUpper(char* str);
 /** 获取FAT镜像文件类型 */

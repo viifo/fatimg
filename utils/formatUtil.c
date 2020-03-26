@@ -2,6 +2,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "../include/fatimg.h"
 
 
@@ -184,3 +185,13 @@ char* strUpper(char* str) {
     return str - count;
 }
 
+
+/**
+ * 随机产生一个分区序号
+ * @return
+ */
+unsigned int getVolumeID() {
+    // 使用当前系统时间作为随机数种子
+    srand(time(NULL));
+    return (unsigned int)rand();
+}
