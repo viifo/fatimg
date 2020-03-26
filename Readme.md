@@ -47,3 +47,7 @@ fatimg imgName.img -b boot.o -f 32 -s 260 -sc 8
 **注意：写入镜像的文件名没有做大小写转换**
 
 
+## LICENSE ##
+MIT
+
+
