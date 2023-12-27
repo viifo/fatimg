@@ -15,7 +15,7 @@
 /** 定义文件分割符 */
 #if defined(WIN32) || defined (WIN64)
 #define SEPARATOR   '\\'
-#elif defined(linux)
+#else
 #define SEPARATOR   '/'
 #endif
 
