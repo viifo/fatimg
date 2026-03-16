@@ -404,7 +404,7 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
  */
 int deleteFileFromImg(FILE *ifp, unsigned short rootDirItemIndex) {
     // 文件簇链本簇号/下一个FAT文件簇链号
-    unsigned short clusterLinkNum;
+    unsigned short clusterLinkNum, nextCluster;
     // 目录表项大小
     unsigned short dirItemSize = sizeof(DirItem);
     DirItem tDirItem;
@@ -415,12 +415,18 @@ int deleteFileFromImg(FILE *ifp, unsigned short rootDirItemIndex) {
 
     // 循环清空FAT文件簇链直到文件末尾
     clusterLinkNum = tDirItem.firstCluster;
-    do {
-        setNextClusterLinkNum(ifp, FAT_FIRST_SECTOR * BYTES_SECTOR,
-                (FAT_FIRST_SECTOR + FAT_SECTOR_NUM) * BYTES_SECTOR,clusterLinkNum, 0, FAT12);
-        // 通过本簇号查找文件簇链的下一簇号
-        clusterLinkNum = getNextClusterLinkNum(ifp, FAT_FIRST_SECTOR * BYTES_SECTOR, clusterLinkNum, FAT12);
-    } while(clusterLinkNum < 0xff8);
+    if (clusterLinkNum != 0) {
+        // 如果文件不是空的（起始簇号不为0）
+        while (clusterLinkNum < 0xff8 && clusterLinkNum >= 2) {
+            // 先获取下一个簇的索引（在清空当前簇之前）
+            nextCluster = getNextClusterLinkNum(ifp, FAT_FIRST_SECTOR * BYTES_SECTOR, clusterLinkNum, FAT12);
+            // 清空当前簇（设置为 0 表示空闲）
+            setNextClusterLinkNum(ifp, FAT_FIRST_SECTOR * BYTES_SECTOR,
+                                  (FAT_FIRST_SECTOR + FAT_SECTOR_NUM) * BYTES_SECTOR,clusterLinkNum, 0, FAT12);
+            // 移动到下一个簇
+            clusterLinkNum = nextCluster;
+        }
+    }
 
     // 设置根目录区表项标记为已删除
     fseek(ifp, ROOT_FIRST_SECTOR * BYTES_SECTOR + rootDirItemIndex * dirItemSize, SEEK_SET);
@@ -452,6 +458,8 @@ int findFileInRootDir(FILE *ifp, char *fileName) {
 
     // 格式化文件名为 8 + 3 + 0 格式
     formatFileName(fileName, newFileName);
+    newFileName[11] = '\0';
+
     // 计算根目录区的大小
     rootDirSize = (DATA_FIRST_SECTOR - ROOT_FIRST_SECTOR) * BYTES_SECTOR;
     for(i = 0; i < rootDirSize / dirItemSize; i ++) {
@@ -459,8 +467,23 @@ int findFileInRootDir(FILE *ifp, char *fileName) {
         fseek(ifp, ROOT_FIRST_SECTOR * BYTES_SECTOR + dirItemSize * i, SEEK_SET);
         fread(&tDirItem, dirItemSize, 1, ifp);
 
+        // 如果首字节为 0, 说明从此往后全是空的，直接结束搜索
+        if (tDirItem.name[0] == 0x00) {
+            break;
+        }
+        // 如果首字节为 0xE5, 说明该文件被删除了，跳过比对，看下一个
+        if ((unsigned char)tDirItem.name[0] == 0xE5) {
+            continue;
+        }
+        // 检查是否是“卷标”，如果是找文件，通常也需要跳过
+        if (tDirItem.attr == 0x08) {
+            continue;
+        }
+
         // 获取根目录表项文件名(FAT根目录表项文件名没有'\0'结束符)
         strncpy(desItemName, tDirItem.name, 11);
+        desItemName[11] = '\0';
+
         // 判断要查找的文件是否存在
         if(!strcmp(desItemName, newFileName)) return i;
     }
