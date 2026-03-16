@@ -22,6 +22,7 @@ Options:
 -f  <12/16/32/64>    Create a FAT12/FAT16/FAT32/EXFAT image.
 -s  <img size(MB)>   Create a standard FAT12 image.
 -sc <4/8/16/32/64>   Specify sectors per cluster (Except FAT12).
+-vl <volumeLabel>    Volume label, maximum 11 characters.
 ```
 
 ## fatimg使用示例 ##
@@ -37,6 +38,7 @@ fatimg imgName.img -vl MYIMG
 fatimg imgName.img -b boot.o
 
 # 复制一个文件到fat12镜像中
+# 注意，复制同名文件会先删除旧文件再创建新文件
 fatimg imgName.img -cp fileName.ext
 
 # 创建一个 260M & 每簇8扇区 的FAT32的镜像文件
