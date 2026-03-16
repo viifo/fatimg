@@ -27,14 +27,17 @@ Options:
 ## fatimg使用示例 ##
 ```shell script
 
-# 创建一个标准的fat12镜像文件
+# 创建一个标准的fat12镜像文件（默认卷标FATIMG）
 fatimg imgName.img
+
+# 创建一个标准的fat12镜像文件并指定卷标
+fatimg imgName.img -vl MYIMG
 
 # 创建一个自定义引导扇区的fat12镜像文件
 fatimg imgName.img -b boot.o
 
 # 复制一个文件到fat12镜像中
-fatimg imgName.img -cp yourfile
+fatimg imgName.img -cp fileName.ext
 
 # 创建一个 260M & 每簇8扇区 的FAT32的镜像文件
 fatimg imgName.img -f 32 -s 260 -sc 8
@@ -57,7 +60,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+   https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
