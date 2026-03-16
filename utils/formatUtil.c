@@ -200,7 +200,8 @@ unsigned int getVolumeID() {
 
     // 获取当前精确时间
     gettimeofday(&tv, NULL);
-    tm_info = localtime(&tv.tv_sec);
+    time_t current_time = (time_t) tv.tv_sec;
+    tm_info = localtime(&current_time);
 
     // 提取各部分分量
     unsigned int month = (unsigned int)tm_info->tm_mon + 1; // tm_mon 是 0-11
