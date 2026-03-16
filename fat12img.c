@@ -19,68 +19,68 @@
 /** 引导扇区结构体 */
 typedef struct {
 
-    // 短跳指令 3字节
+    // 短跳指令 3个字节
     unsigned char jmpBoot[3];
-    // 软盘厂商名
+    // 软盘厂商名 8个字节
     unsigned char OEMName[8];
-    // 每个扇区的大小
+    // 每个扇区的大小 2个字节
     unsigned short bytesPerSector;
-    // 每簇扇区数
+    // 每簇扇区数 1个字节
     unsigned char sectorsPerCluster;
-    // 保留扇区数
+    // 保留扇区数 2个字节
     unsigned short reservedClusters;
-    // fat文件分配表个数表
+    // fat文件分配表个数表 1个字节
     unsigned char FATNum;
-    // 根目录文件数最大值（根目录项数）
+    // 根目录文件数最大值（根目录项数） 2个字节
     unsigned short rootEntCount;
-    // 磁盘扇区总数
+    // 磁盘扇区总数 2个字节
     unsigned short totalSectors16;
-    // 介质描述符
+    // 介质描述符 1个字节
     unsigned char media;
-    // 一个FAT表所占扇区数
+    // 一个FAT表所占扇区数 2个字节
     unsigned short sectorsPerFAT;
-    // 每磁道扇区数
+    // 每磁道扇区数 2个字节
     unsigned short sectorsPerTrack;
-    // 磁头数
+    // 磁头数 2个字节
     unsigned short headsNum;
-    // 隐藏扇区数
+    // 隐藏扇区数 4个字节
     unsigned int hiddenSectors;
-    // totalSectors16 = 0， 由此项记录磁盘扇区总数
+    // totalSectors16 = 0， 由此项记录磁盘扇区总数 4个字节
     unsigned int totalSectors32;
-    // 中断13的驱动器号
+    // 中断13的驱动器号 1个字节
     unsigned char driverNum;
-    // 保留
+    // 保留 1个字节
     unsigned char reserved1;
-    // 扩展引导标记
+    // 扩展引导标记 1个字节
     unsigned char bootSignature;
-    // 卷序列号
+    // 卷序列号 4个字节
     unsigned int volumeID;
-    // 卷标
+    // 卷标 11个字节
     unsigned char volumeLabel[11];
-    // 文件系统类型名
+    // 文件系统类型名 8个字节
     unsigned char fileSystemTypeName[8];
-    // 引导代码
+    // 引导代码 448个字节
     unsigned char bootCode[448];
-    // 引导扇区结束标记
+    // 引导扇区结束标记 2个字节
     unsigned char bootEndFlag[2];
 
 } __attribute__((packed)) BootSector;
 
 /** 根目录区目录表项结构 */
 typedef struct {
-    // 文件名8字节 + 扩展名3字节 (11字节)
+    // 文件名 8 字节 + 扩展名 3 字节 (11 字节)
     unsigned char name[11];
-    // 文件属性 (1字节)
+    // 文件属性 (1 字节)
     unsigned char attr;
-    // 保留项 (10字节)
+    // 保留项 (10 字节)
     unsigned char reserved[10];
-    // 最后修改时间 (2字节)
+    // 最后修改时间 (2 字节)
     unsigned short writeTime;
-    // 最后修改日期 (2字节)
+    // 最后修改日期 (2 字节)
     unsigned short writeDate;
-    // 文件起始簇号 (2字节)
+    // 文件起始簇号 (2 字节)
     unsigned short firstCluster;
-    // 文件大小 (4字节)
+    // 文件大小 (4 字节)
     unsigned int size;
 } __attribute__((packed)) DirItem;
 
@@ -92,7 +92,6 @@ int findEmptyRootDirItem(FILE*);
 int findFileInRootDir(FILE*, char*);
 /** 从软盘镜像中删除文件 */
 int deleteFileFromImg(FILE*, unsigned short);
-
 
 
 /**
@@ -107,7 +106,7 @@ int createCustomBootFat12img(char *imgPath, char *bootPath) {
     unsigned long int i;
     unsigned char bootSector[BYTES_SECTOR] = {0};
     // FAT表的第0簇和第1簇为保留簇
-    // 其中第0字节（首字节）表示磁盘类型，其值与BPB中介质描述符（BPB_Media）对应的磁盘类型相同(0xf0-软盘，0xf8-硬盘)
+    // 其中第 0 字节（首字节）表示磁盘类型，其值与BPB中介质描述符（BPB_Media）对应的磁盘类型相同(0xf0-软盘，0xf8-硬盘)
     // 第2，3字节代表 FAT 文件分配表标识符
     // 从第四个字节开始与用户数据区所有的簇一一对应
     char fatFlag[3] = {0xf0, 0xff, 0xff};
@@ -159,67 +158,95 @@ int createCustomBootFat12img(char *imgPath, char *bootPath) {
 /**
  * 创建标准的空的fat12软盘镜像(1.44M)
  * @param imgPath - 软盘镜像名
+ * @param volumeLabel - 软盘卷标，默认 FATIMG
  * @return
  */
-int createEmptyFat12img(char *imgPath) {
-    // FAT表的第0簇和第1簇为保留簇
-    // 其中第0字节（首字节）表示磁盘类型，其值与BPB中介质描述符（BPB_Media）对应的磁盘类型相同(0xf0-软盘，0xf8-硬盘)
-    // 第2，3字节代表 FAT 文件分配表标识符
-    // 从第四个字节开始与用户数据区所有的簇一一对应
-    char fatFlag[3] = {0xf0, 0xff, 0xff};
-    FILE *fp;
-    unsigned long int i;
-    // fat12软盘镜像引导扇区信息(512字节)
+int createEmptyFat12img(char *imgPath, char *volumeLabel) {
+    // 格式化卷标, 多一位用于设置字符串结束符 '\0'
+    char formattedLabel[12];
+    formatFat12VolumeLabel(formattedLabel, volumeLabel);
+    // 验证卷标合法性
+    if (volumeLabel && volumeLabel[0] != '\0') {
+        if (!isValidFat12VolumeLabel(volumeLabel)) {
+            printf("Volume label contains illegal characters.\n");
+            return ERROR;
+        }
+    }
+
+    // 新建镜像文件
+    // wb, 文件存在会覆盖数据
+    FILE *fp = fopen(imgPath, "wb");
+    if(fp == NULL) return ERROR;
+
+    // 写入引导扇区信息 (512 字节)
     BootSector bootSector = {
-            {0xeb, 0x4e, 0x90},
+            {0xeb, 0x3B, 0x90}, // 0x2D = 59 字节，跳过 3 + 59 = 62 字节
             "FATIMG  ",
-            512,
-            1,
-            1,
+            512, // 扇区大小
+            1, // 每簇扇区数
+            1, // 保留扇区数
             2,
-            224,
-            2880,
-            0xf0,
-            9,
+            224, // 根目录文件数最大值
+            2880, // 逻辑扇区总数
+            0xf0, // 软盘
+            9, // 每个 FAT 占 9 个扇区
             18,
             2,
             0,
             0,
             0,
             0,
-            0x02,
-            0,
-            "FATIMG     ",
+            0x29,
+            getVolumeID(), // 卷序列号，随机生成
+            "", // 卷标
             "FAT12   ",
             {0},
             {0x55, 0xaa}
     };
-
-    // 新建镜像文件
-    // wb, 文件存在会覆盖数据
-    fp = fopen(imgPath, "wb");
-    if(fp == NULL) return ERROR;
-
+    // 手动复制卷标到结构体
+    strncpy((char*) bootSector.volumeLabel, formattedLabel, 11);
     // 将引导扇区信息写入软盘镜像
     fwrite(&bootSector, BYTES_SECTOR, 1, fp);
 
+    // 引导扇区后是两个 FAT 表（默认各占 9 扇区）
+    // FAT表的第 0 项和第 1 项为保留项，一个FAT表项 12 bit，两项共 24 bit，即 3 字节
+    // 其中第 0 字节（首字节）表示磁盘类型，其值与BPB中介质描述符（BPB_Media）对应的磁盘类型相同(0xf0-软盘，0xf8-硬盘)
+    // 第 2，3 字节代表 FAT 文件分配表标识符, 使用 0xff（文件结束符） 填充，避免被错误使用
+    // 从第四个字节开始与用户数据区所有的簇一一对应
+    unsigned char fatTable[9 * 512] = {0};
+    fatTable[0] = 0xF0; // 介质描述符
+    fatTable[1] = 0xFF; // 文件结束标记
+    fatTable[2] = 0xFF;
     // 写 FAT1 表信息
-    fwrite(fatFlag, 3, 1, fp);
-    for(i = 3; i < FAT_SECTOR_NUM * BYTES_SECTOR; i++) {
-        fputc(0, fp);
-    }
+    fwrite(fatTable, sizeof(fatTable), 1, fp);
+    // 写入 FAT2 (与 FAT1 完全相同)
+    fwrite(fatTable, sizeof(fatTable), 1, fp);
 
-    // 写 FAT2 表信息
-    // FAT2表紧随FAT1表
-    fwrite(fatFlag, 3, 1, fp);
-    for(i = 3; i < FAT_SECTOR_NUM * BYTES_SECTOR; i++){
-        fputc(0, fp);
-    }
+    // 写目录区
+    unsigned char rootDir[14 * 512] = {0};
+    // 设置根目录项卷标条目 (根目录第 0 个条目)
+    // 目录项名位置放卷标名
+    memcpy(&rootDir[0], formattedLabel, 11);
+    // 目录项属性：0x08 - 卷标
+    rootDir[11] = 0x08;
+    unsigned short timeVal = formatTime();
+    unsigned short dateVal = formatDate();
+    // 强制转换或手动拆分写入，以保证跨平台安全
+    // 最后修改时间
+    rootDir[22] = (unsigned char)(timeVal & 0xFF);
+    rootDir[23] = (unsigned char)((timeVal >> 8) & 0xFF);
+    // 最后修改日期
+    rootDir[24] = (unsigned char)(dateVal & 0xFF);
+    rootDir[25] = (unsigned char)((dateVal >> 8) & 0xFF);
+    // 写入 14 个扇区的根目录区
+    fwrite(rootDir, sizeof(rootDir), 1, fp);
 
-    // 用0填充FAT12用户数据区
-    // 用户区数据区扇区数 = 总扇区数 - FAT表扇区数 * 2 - 引导扇区数
-    for(i = 0; i < (TOTAL_SECTORS - FAT_SECTOR_NUM * 2 - 1) * BYTES_SECTOR; i++){
-        fputc(0, fp);
+    // 用 0 填充 FAT12 用户数据区
+    // 用户区数据区扇区数 = 总扇区数 - 引导扇区数 - FAT表扇区数 * 2 - 根目录扇区数 = 总扇区数 - 数据区起始扇区号
+    unsigned char emptySector[512] = {0};
+    int dataSectorsCount = TOTAL_SECTORS - DATA_FIRST_SECTOR;
+    for (int i = 0; i < dataSectorsCount; i++) {
+        fwrite(emptySector, 512, 1, fp);
     }
 
     // 关闭文件
@@ -347,7 +374,7 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
         fwrite(tempData, BYTES_SECTOR, 1, ifp);
     }
     // 最后一个扇区单独处理
-    // 最后一个扇区未满512字节，剩余部分填充0
+    // 最后一个扇区未满 512 字节，剩余部分填充0
     if(remainingBytes > 0) {
         fread(tempData, remainingBytes, 1, fp);
         for(i = remainingBytes; i < BYTES_SECTOR; i ++) {
@@ -462,11 +489,10 @@ int findEmptyRootDirItem(FILE *ifp) {
         fseek(ifp, ROOT_FIRST_SECTOR * BYTES_SECTOR + dirItemSize * i, SEEK_SET);
         fread(&dirItem, dirItemSize, 1, ifp);
 
-        // 文件名的第1字节是0xe5表示此文件已被删除，如果文件名第1字节是0表示此目录项可用
+        // 文件名的第 1 字节是0xe5表示此文件已被删除，如果文件名第 1 字节是0表示此目录项可用
         temp = dirItem.name[0];
         if((temp == 0) || (temp == 0xe5)) return i;
     }
 
     return NO_FIND;
 }
-

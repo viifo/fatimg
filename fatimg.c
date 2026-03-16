@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <math.h>
 #include "include/fatimg.h"
 
 
@@ -12,7 +11,7 @@ int badArg();
 /** 错误的命令 */
 int badCommand();
 /** 自定义FAT镜像创建 */
-int customCreateImg(char* imgPath, char* bootPath, float size, int secPerCluster, FAT_TYPE type);
+int customCreateImg(char* imgPath, char* bootPath, char* volumeLabel, float size, int secPerCluster, FAT_TYPE type);
 
 
 /**
@@ -31,6 +30,8 @@ int main(int argc, char* argv[]) {
     float size = 0;
     // 默认不指定每簇扇区数
     int secPerCluster = 0;
+    // 默认卷标
+    char* volumeLabel = "FATIMG     ";
 
     // --help
     // 显示提示信息
@@ -75,7 +76,14 @@ int main(int argc, char* argv[]) {
 
         // 默认创建标准 FAT12 镜像文件.
         if(argc == 2 && argv[1][0] != '-') {
-            i = createEmptyFat12img(argv[1]);
+            i = createEmptyFat12img(argv[1], volumeLabel);
+            if (i == ERROR) {
+                printf("Create image file fail.\n");
+                return ERROR;
+            }
+        }
+        else if(argc == 4 && strcasecmp(argv[2], "-vl")) {
+            i = createEmptyFat12img(argv[1], argv[3]);
             if (i == ERROR) {
                 printf("Create image file fail.\n");
                 return ERROR;
@@ -121,11 +129,16 @@ int main(int argc, char* argv[]) {
                     }
 
                 }
+                // -vl <volumeLabel>
+                // 指定创建的FAT镜像的卷标，最大11个字符
+                else if (!strcasecmp(argv[i], "-vl")) {
+                    volumeLabel = argv[i + 1];
+                }
                 else return badCommand();
             }
 
             // 自定义FAT镜像创建
-            return customCreateImg(argv[1], str, size, secPerCluster, type);
+            return customCreateImg(argv[1], str, volumeLabel, size, secPerCluster, type);
 
         } else return badArg();
 
@@ -139,16 +152,24 @@ int main(int argc, char* argv[]) {
  * 自定义FAT镜像创建
  * @param imgPath - 镜像文件路径
  * @param bootPath - 自定义引导扇区文件路径
+ * @param volumeLabel - 卷标
  * @param size - 文件大小
  * @param secPerCluster - 每簇扇区数
  * @param type - 文件格式
  * @return
  */
-int customCreateImg(char* imgPath, char* bootPath, float size, int secPerCluster, FAT_TYPE type) {
+int customCreateImg(
+        char* imgPath,
+        char* bootPath,
+        char* volumeLabel,
+        float size,
+        int secPerCluster,
+        FAT_TYPE type
+) {
     int result;
     switch (type) {
         case FAT12: {
-            if (bootPath == NULL) result = createEmptyFat12img(imgPath);
+            if (bootPath == NULL) result = createEmptyFat12img(imgPath, volumeLabel);
             else result = createCustomBootFat12img(imgPath, bootPath);
             if (result == NO_FIND) {
                 printf("not find boot file.\n");
@@ -229,5 +250,6 @@ void help(char* programName) {
     printf("  %-15s\t%s\n", "-f  <12/16/32/64>", "Create a FAT12/FAT16/FAT32/EXFAT image.");
     printf("  %-15s\t%s\n", "-s  <img size(MB)>", "Create a standard FAT12 image.");
     printf("  %-15s\t%s\n", "-sc <4/8/16/32/64>", "Specify sectors per cluster (Except FAT12).");
+    printf("  %-15s\t%s\n", "-vl <volumeLabel>", "Volume label, maximum 11 characters.");
 }
 

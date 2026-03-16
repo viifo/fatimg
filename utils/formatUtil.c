@@ -2,7 +2,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <sys/time.h>
 #include "../include/fatimg.h"
 
 
@@ -14,41 +14,44 @@
  * @param desName - 格式化后的短文件/目录名名
  */
 void formatFileName(char* orgName, char* desName) {
-    int i, j;
+    int i = 0, endFlag = 0;
     char* suffixName;
 
     // 获取文件后缀名(包含'.')
     suffixName = strrchr(orgName, '.');
-    // 此文件没有扩展名
-    if(NULL == suffixName) {
-        // 文件名最多8字符
+    if (NULL == suffixName) {
+        // 此文件没有扩展名
+        // 文件名最多 8 字符
         for(i = 0; i < 8 && orgName[i]; i ++) {
             desName[i] = orgName[i];
         }
-        // 文件名 + 扩展名(0字节) 不足11位, 补空格
+        // 文件名 + 扩展名(0 字节) 不足11位, 补足空格
         while(i < 11) desName[i++] = ' ';
-        // 字符串结尾符
-        desName[i] = 0;
-    }
+    } else {
         // 此文件存在扩展名
-    else {
-        // 计算从符号'.'到字符串首字符的长度
-        j = (int)(strlen(orgName) - strlen(suffixName));
-        // 文件名最多8字符
-        for(i = 0; i < 8 && i < j; i ++) {
-            desName[i] = orgName[i];
+        // 计算从符号'.'到字符串首字符的长度（地址相减）
+        int nameLen = (int)(suffixName - orgName);
+        // 填充文件名部分，文件名最多 8 字符
+        for (i = 0; i < 8; i ++) {
+            if (i < nameLen && orgName[i] != '\0') {
+                desName[i] = orgName[i];
+            } else {
+                desName[i] = ' '; // 补足空格
+            }
         }
-        // 文件名不足8位，补空格
-        while(i < 8) desName[i++] = ' ';
-        // 扩展名最多3字符
-        for(j += 1; i < 11 && desName[j]; i ++, j ++) {
-            desName[i] = orgName[j];
+        // 填充扩展名部分 (点之后的 3 位, 跳过 '.')
+        char* ext = suffixName + 1;
+        for (i = 0; i < 3; i++) {
+            if (!endFlag && ext[i] != '\0') {
+                desName[8 + i] = ext[i];
+            } else {
+                endFlag = 1;
+                desName[8 + i] = ' '; // 补足空格
+            }
         }
-        // 扩展名不足3位，补空格
-        while(i < 11) desName[i++] = ' ';
-        // 字符串结尾符
-        desName[i] = 0;
     }
+    // 字符串结尾符
+    desName[11] = '\0';
 }
 
 
@@ -61,7 +64,7 @@ unsigned short formatDate() {
     time_t t;
     struct tm *st;
     short year, mon, day;
-    unsigned short fdate = 0;
+    unsigned short fDate = 0;
 
     // 获取年月日
     time(&t);
@@ -72,14 +75,14 @@ unsigned short formatDate() {
 
     // 结果的高7位表示目标年到1980年的偏移
     year <<= 9;
-    fdate |= year;
-    // 结果的中4位表示月
+    fDate |= year;
+    // 结果的中间4位表示月
     mon <<= 5;
-    fdate |= mon;
+    fDate |= mon;
     // 结果的低5位表示日
-    fdate |= day;
+    fDate |= day;
 
-    return fdate;
+    return fDate;
 }
 
 
@@ -106,7 +109,7 @@ unsigned short formatTime() {
     // 结果的高5位表示小时
     hour <<= 11;
     ftime |= hour;
-    // 结果的中6位表示分
+    // 结果的中间6位表示分
     min <<= 5;
     ftime |= min;
     // 结果的低5位表示秒/2取整
@@ -187,11 +190,80 @@ char* strUpper(char* str) {
 
 
 /**
- * 随机产生一个分区序号
+ * 生成一个卷标序号
+ * $$VolumeID = [ (Month + Day) \ll 24 ] \ | \ [ Hour \ll 16 ] \ | \ [ (Sec \ll 8) + MSec ]$$
  * @return
  */
 unsigned int getVolumeID() {
-    // 使用当前系统时间作为随机数种子
-    srand(time(NULL));
-    return (unsigned int)rand();
+    struct timeval tv;
+    struct tm *tm_info;
+
+    // 获取当前精确时间
+    gettimeofday(&tv, NULL);
+    tm_info = localtime(&tv.tv_sec);
+
+    // 提取各部分分量
+    unsigned int month = (unsigned int)tm_info->tm_mon + 1; // tm_mon 是 0-11
+    unsigned int day   = (unsigned int)tm_info->tm_mday;
+    unsigned int hour  = (unsigned int)tm_info->tm_hour;
+    unsigned int sec   = (unsigned int)tm_info->tm_sec;
+    unsigned int msec  = (unsigned int)(tv.tv_usec / 1000); // 微秒转毫秒
+
+    // 按照公式合成
+    unsigned int volumeID = 0;
+    volumeID |= ((month + day) << 24);
+    volumeID |= (hour << 16);
+    volumeID |= ((sec << 8) + msec);
+
+    return volumeID;
+}
+
+/**
+ * 格式化 FAT12 卷标
+ *
+ * @param dest 目标缓冲区，必须至少 12 字节（11字节+1个结束符）
+ * @param src 源卷标字符串，可以为 NULL
+ */
+void formatFat12VolumeLabel(char *dest, const char* src) {
+    const char* input = NULL;
+
+    if (src && src[0] != '\0') {
+        input = src;
+    } else {
+        input = "FATIMG     ";  // 最终默认值
+    }
+    // 计算长度（最大11）
+    size_t input_len = strlen(input);
+    if (input_len > 11) {
+        input_len = 11;
+    }
+    // 转换为大写并复制
+    int i;
+    for (i = 0; i < input_len; i++) {
+        unsigned char c = (unsigned char)input[i];
+        dest[i] = toupper(c);
+    }
+    // 用空格填充剩余部分
+    for (; i < 11; i++) {
+        dest[i] = ' ';
+    }
+    // 添加字符串结束符
+    dest[11] = '\0';
+}
+
+/**
+ * 检查卷标是否合法
+ * FAT卷标不允许的字符: * ? . , ; : / \ | + = < > [ ]
+ */
+char isValidFat12VolumeLabel(const char* label) {
+    if (!label) return 0;
+    const char* invalid_chars = "*?.,;:/\\|+=> <[]";
+    for (int i = 0; i < 11 && label[i] && label[i] != ' '; i++) {
+        for (int j = 0; invalid_chars[j]; j++) {
+            if (label[i] == invalid_chars[j]) {
+                return 0;
+            }
+        }
+    }
+    return 1;
 }

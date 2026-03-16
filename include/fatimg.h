@@ -34,7 +34,7 @@ typedef char FAT_TYPE;
  * FAT12
  ****************************************************************/
 /** 创建标准的空的fat12软盘镜像(1.44M) */
-int createEmptyFat12img(char*);
+int createEmptyFat12img(char*, char*);
 /** 创建一个标准的自定义引导扇区的fat12软盘镜像(1.44M) */
 int createCustomBootFat12img(char*, char*);
 /** 拷贝文件到FAT12软盘镜像 */
@@ -67,6 +67,10 @@ unsigned short formatDate();
 void formatFileName(char*, char*);
 /** 根据短文件名获取长文件名目录项的校验值 @return 校验值 */
 unsigned char getChecksumByShortName(const char*);
+/** 格式化 FAT12 卷标 */
+void formatFat12VolumeLabel(char[12], const char*);
+/** 检查 FAT12 卷标是否合法 */
+char isValidFat12VolumeLabel(const char*);
 
 
 /** 向本簇号指向的FAT文件分配表表项中写入簇链的下一簇号 */

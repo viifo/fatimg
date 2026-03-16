@@ -74,3 +74,6 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+/fatimg
+*.img
+/outputs/*
