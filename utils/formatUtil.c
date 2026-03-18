@@ -22,11 +22,13 @@ void formatFileName(char* orgName, char* desName) {
     if (NULL == suffixName) {
         // 此文件没有扩展名
         // 文件名最多 8 字符
-        for(i = 0; i < 8 && orgName[i]; i ++) {
-            desName[i] = orgName[i];
+        for(i = 0; i < 11; i ++) {
+            if (i < 8 && orgName[i] != '\0') {
+                desName[i] = toupper((unsigned char) orgName[i]);
+            } else {
+                desName[i] = ' ';
+            }
         }
-        // 文件名 + 扩展名(0 字节) 不足11位, 补足空格
-        while(i < 11) desName[i++] = ' ';
     } else {
         // 此文件存在扩展名
         // 计算从符号'.'到字符串首字符的长度（地址相减）
@@ -34,7 +36,7 @@ void formatFileName(char* orgName, char* desName) {
         // 填充文件名部分，文件名最多 8 字符
         for (i = 0; i < 8; i ++) {
             if (i < nameLen && orgName[i] != '\0') {
-                desName[i] = orgName[i];
+                desName[i] = toupper((unsigned char) orgName[i]);
             } else {
                 desName[i] = ' '; // 补足空格
             }
@@ -43,7 +45,7 @@ void formatFileName(char* orgName, char* desName) {
         char* ext = suffixName + 1;
         for (i = 0; i < 3; i++) {
             if (!endFlag && ext[i] != '\0') {
-                desName[8 + i] = ext[i];
+                desName[8 + i] = toupper((unsigned char) ext[i]);
             } else {
                 endFlag = 1;
                 desName[8 + i] = ' '; // 补足空格
@@ -118,6 +120,26 @@ unsigned short formatTime() {
     return ftime;
 }
 
+/**
+ * 文件创建日期数组转FAT12日期格式
+ * @param time 文件创建时间数组
+ * @return
+ */
+unsigned short formatCreateDateArray(int *time) {
+    int year = time[0];
+    if (year < 1980) year = 1980;
+    return (unsigned short)(((year - 1980) << 9) | (time[1] << 5) | time[2]);
+}
+
+/**
+ * 文件创建时间数组转FAT12时间格式
+ * @param time 文件创建时间数组
+ * @return
+ */
+unsigned short formatCreateTimeArray(int *time) {
+    // 秒数在 FAT 中以 2 秒为单位存储，所以要除以 2
+    return (unsigned short)((time[3] << 11) | (time[4] << 5) | (time[5] / 2));
+}
 
 /**
  * 根据短文件名获取长文件名目录项的校验值

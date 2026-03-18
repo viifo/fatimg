@@ -72,8 +72,23 @@ typedef struct {
     unsigned char name[11];
     // 文件属性 (1 字节)
     unsigned char attr;
-    // 保留项 (10 字节)
-    unsigned char reserved[10];
+
+    // FAT12 保留项 (10 字节)
+    // 随着 Windows 95 (VFAT) 的出现，原本 10 字节的 reserved 字段被重新定义了一部分，
+    // 用来存储创建时间和最后访问日期。
+    // 系统保留 (1 字节， 通常设为 0)
+    unsigned char  winNTRes;
+    // 创建时间的毫秒级 (1 字节，0-199)
+    unsigned char  createTimeMs;
+    // 创建时间 (2 字节，与 writeTime 格式相同)
+    unsigned short createTime;
+    // 创建日期 (2 字节，与 writeDate 格式相同)
+    unsigned short createDate;
+    // 最后访问日期 (2 字节)
+    unsigned short lastAccessDate;
+    // FAT32 使用，FAT12 设为 0 (2 字节)
+    unsigned short firstClusterHi;
+
     // 最后修改时间 (2 字节)
     unsigned short writeTime;
     // 最后修改日期 (2 字节)
@@ -260,7 +275,7 @@ int createEmptyFat12img(char *imgPath, char *volumeLabel) {
  * 拷贝文件到FAT12软盘镜像
  * @param imgPath - 镜像文件
  * @param filePath - 要拷贝的文件
- * @param fileAttr - 要拷贝的文件属性
+ * @param fileAttr - 要拷贝的文件属性 0x00 - 普通文件，0x01 - 只读，0x02 - 隐藏，0x04 - 系统文件，0x10 - 目录
  * @return
  */
 int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
@@ -273,6 +288,8 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
     unsigned short dirItemSize = sizeof(DirItem);
     // 要拷贝的文件大小
     unsigned long fileSize = 0;
+    // 要拷贝的文件的创建时间
+    int fileCreateTimes[6] = {0};
     char newFileName[12], *fileName;
     /** 拷贝数据临时中转数组 */
     unsigned char tempData[BYTES_SECTOR] = {0};
@@ -287,6 +304,9 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
     // 打开要拷贝的文件
     fp = fopen(filePath, "rb");
     if(fp == NULL) return NO_FIND;
+
+    // 获取文件创建时间
+    getFileCreateTimeArray(filePath, fileCreateTimes);
 
     // 从源文件路径中取出文件名
     // 因Windows支持两种文件分割符，所以都要判断一下
@@ -350,8 +370,14 @@ int copyFileToFat12img(char *imgPath, char *filePath, char fileAttr) {
             (FAT_FIRST_SECTOR + FAT_SECTOR_NUM) * BYTES_SECTOR,fileSectorList[i - 1], 0xfff, FAT12);
 
     // 设置文件相关信息
-    strncpy(dirItem.name, (formatFileName(fileName, newFileName), newFileName), 11);
+    strncpy((char*)dirItem.name, (formatFileName(fileName, newFileName), newFileName), 11);
     dirItem.attr = fileAttr;
+    dirItem.winNTRes = 0;
+    dirItem.createTimeMs = 0;
+    dirItem.createTime = formatCreateTimeArray(fileCreateTimes);
+    dirItem.createDate = formatCreateDateArray(fileCreateTimes);
+    dirItem.lastAccessDate = 0;
+    dirItem.firstClusterHi = 0;
     dirItem.writeTime = formatTime();
     dirItem.writeDate = formatDate();
     dirItem.firstCluster = fileSectorList[0];
@@ -481,7 +507,7 @@ int findFileInRootDir(FILE *ifp, char *fileName) {
         }
 
         // 获取根目录表项文件名(FAT根目录表项文件名没有'\0'结束符)
-        strncpy(desItemName, tDirItem.name, 11);
+        strncpy(desItemName, (char*)tDirItem.name, 11);
         desItemName[11] = '\0';
 
         // 判断要查找的文件是否存在

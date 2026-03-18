@@ -29,6 +29,13 @@ typedef char FAT_TYPE;
 #define UNKOWN 0
 
 
+/** 定义文件类型 */
+typedef char FILE_TYPE;
+#define TYPE_UNKNOWN 0
+#define TYPE_FILE 1
+#define TYPE_DIRECTORY 2
+#define TYPE_NOT_FOUND 3
+
 
 /****************************************************************
  * FAT12
@@ -59,10 +66,18 @@ unsigned int getVolumeID();
 char* strUpper(char* str);
 /** 获取FAT镜像文件类型 */
 FAT_TYPE getImageFatType(const char* path);
+/** 获取文件类型 */
+FILE_TYPE getFileType(const char *path);
+/** 获取文件创建时间 */
+void getFileCreateTimeArray(const char *path, int *dest);
 /** 格式化时间为FAT时间格式 */
 unsigned short formatTime();
 /** 格式化日期为日期格式 */
 unsigned short formatDate();
+/** 文件创建日期数组转FAT12日期格式 **/
+unsigned short formatCreateDateArray(int *time);
+/** 文件创建时间数组转FAT12时间格式 **/
+unsigned short formatCreateTimeArray(int *time);
 /** 格式化短文件名为 8 + 3 + '\0' 格式 */
 void formatFileName(char*, char*);
 /** 根据短文件名获取长文件名目录项的校验值 @return 校验值 */

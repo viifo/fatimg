@@ -1,5 +1,85 @@
 #include <stdio.h>
+#include <time.h>
 #include "../include/fatimg.h"
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
+
+/**
+ * 获取文件类型
+ * @param path
+ * @return FileType
+ */
+FILE_TYPE getFileType(const char *path) {
+#ifdef _WIN32
+    DWORD dwAttrib = GetFileAttributes(path);
+
+    if (dwAttrib == INVALID_FILE_ATTRIBUTES) {
+        return TYPE_NOT_FOUND;
+    }
+
+    if (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) {
+        return TYPE_DIRECTORY;
+    } else {
+        return TYPE_FILE;
+    }
+#else
+    struct stat path_stat;
+    if (stat(path, &path_stat) != 0) {
+        return TYPE_NOT_FOUND;
+    }
+
+    if (S_ISDIR(path_stat.st_mode)) {
+        return TYPE_DIRECTORY;
+    } else if (S_ISREG(path_stat.st_mode)) {
+        return TYPE_FILE;
+    } else {
+        return TYPE_UNKNOWN;
+    }
+#endif
+}
+
+/**
+ * 获取文件创建时间
+ * dest[0] - 年,
+ * dest[1] - 月,
+ * dest[2] - 日,
+ * dest[3] - 时,
+ * dest[4] - 分,
+ * dest[5] - 秒
+ * @param path
+ * @param dest
+ */
+void getFileCreateTimeArray(const char *path, int *dest) {
+#if defined(_WIN32) || defined(_WIN64)
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &data)) return;
+    SYSTEMTIME st;
+    // 使用 ftCreationTime (创建时间)
+    FileTimeToSystemTime(&data.ftCreationTime, &st);
+    dest[0] = st.wYear;
+    dest[1] = st.wMonth;
+    dest[2] = st.wDay;
+    dest[3] = st.wHour;
+    dest[4] = st.wMinute;
+    dest[5] = st.wSecond;
+#else
+    struct stat st;
+    if (stat(path, &st) != 0) return;
+    // 使用 st.st_birthtimespec.tv_sec 创建时间 (秒)
+    struct tm *tm_info = localtime(&st.st_birthtimespec.tv_sec);
+    dest[0] = tm_info->tm_year + 1900;
+    dest[1] = tm_info->tm_mon + 1;
+    dest[2] = tm_info->tm_mday;
+    dest[3] = tm_info->tm_hour;
+    dest[4] = tm_info->tm_min;
+    dest[5] = tm_info->tm_sec;
+#endif
+}
 
 
 /**

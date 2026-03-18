@@ -47,11 +47,18 @@ int main(int argc, char* argv[]) {
     // -cp <dest file>
     // 拷贝目标文件到fat镜像中
     else if(argc == 4 && !strcasecmp(argv[2], "-cp")) {
+        FILE_TYPE fileType = getFileType(argv[3]);
+        if (fileType == TYPE_NOT_FOUND) {
+            printf("The target file does not exist.\n");
+            return BAD_FORMAT;
+        } else if (fileType != TYPE_FILE) {
+            printf("Currently, only copying regular files to FAT12 images is supported.\n");
+            return BAD_FORMAT;
+        }
 
-        // FAT12文件属性 :
-        // 0x00 - 普通文件，0x01 - 只读，0x02 - 隐藏，0x04 - 系统文件，0x10 - 目录
         type = getImageFatType(argv[1]);
         if (type == FAT12) {
+            // 复制普通文件到 FAT12 镜像中
             i = copyFileToFat12img(argv[1], argv[3], 0);
         } else if (type == FAT32) {
             // 暂不支持复制文件到FAT32软盘镜像
