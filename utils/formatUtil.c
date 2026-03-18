@@ -22,13 +22,11 @@ void formatFileName(char* orgName, char* desName) {
     if (NULL == suffixName) {
         // 此文件没有扩展名
         // 文件名最多 8 字符
-        for(i = 0; i < 11; i ++) {
-            if (i < 8 && orgName[i] != '\0') {
-                desName[i] = toupper((unsigned char) orgName[i]);
-            } else {
-                desName[i] = ' ';
-            }
+        for(i = 0; i < 8 && orgName[i]; i ++) {
+            desName[i] = toupper((unsigned char) orgName[i]);
         }
+        // 文件名 + 扩展名(0 字节) 不足11位, 补足空格
+        while(i < 11) desName[i++] = ' ';
     } else {
         // 此文件存在扩展名
         // 计算从符号'.'到字符串首字符的长度（地址相减）

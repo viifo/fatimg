@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "include/fatimg.h"
 
+/** 当前版本 */
+#define FATIMG_VERSION "0.1"
 
 /** 显示程序用法 */
 void help(char* programName);
@@ -11,7 +13,7 @@ int badArg();
 /** 错误的命令 */
 int badCommand();
 /** 自定义FAT镜像创建 */
-int customCreateImg(char* imgPath, char* bootPath, char* volumeLabel, float size, int secPerCluster, FAT_TYPE type);
+int customCreateImg(char* imgPath, char* bootPath, char* volumeLabel, float size, int secPerCluster, FAT_TYPE type, char isInit);
 
 
 /**
@@ -32,6 +34,8 @@ int main(int argc, char* argv[]) {
     int secPerCluster = 0;
     // 默认卷标
     char* volumeLabel = "FATIMG     ";
+    // 写入 boot file 时是否格式化软盘镜像
+    char isInit = 0;
 
     // --help
     // 显示提示信息
@@ -42,6 +46,17 @@ int main(int argc, char* argv[]) {
         if (str != NULL) str = str + 1;
         else str = argv[0];
         help(str);
+
+    }
+    // --version
+    // 显示版本信息
+    else if(argc == 2 && !strcasecmp(argv[1], "--version")) {
+
+        // 从路径中取出程序名
+        str = strrchr(argv[0], SEPARATOR);
+        if (str != NULL) str = str + 1;
+        else str = argv[0];
+        printf("%s Version: %s\n", str, FATIMG_VERSION);
 
     }
     // -cp <dest file>
@@ -89,7 +104,7 @@ int main(int argc, char* argv[]) {
                 return ERROR;
             }
         }
-        else if(argc == 4 && strcasecmp(argv[2], "-vl")) {
+        else if(argc == 4 && !strcasecmp(argv[2], "-vl")) {
             i = createEmptyFat12img(argv[1], argv[3]);
             if (i == ERROR) {
                 printf("Create image file fail.\n");
@@ -141,11 +156,16 @@ int main(int argc, char* argv[]) {
                 else if (!strcasecmp(argv[i], "-vl")) {
                     volumeLabel = argv[i + 1];
                 }
+                // -i
+                // 写入 boot file 的同时格式化软盘镜像
+                else if (!strcasecmp(argv[i], "-i")) {
+                    isInit = 1;
+                }
                 else return badCommand();
             }
 
             // 自定义FAT镜像创建
-            return customCreateImg(argv[1], str, volumeLabel, size, secPerCluster, type);
+            return customCreateImg(argv[1], str, volumeLabel, size, secPerCluster, type, isInit);
 
         } else return badArg();
 
@@ -163,6 +183,7 @@ int main(int argc, char* argv[]) {
  * @param size - 文件大小
  * @param secPerCluster - 每簇扇区数
  * @param type - 文件格式
+ * @param isInit - 是否格式化镜像
  * @return
  */
 int customCreateImg(
@@ -171,13 +192,14 @@ int customCreateImg(
         char* volumeLabel,
         float size,
         int secPerCluster,
-        FAT_TYPE type
+        FAT_TYPE type,
+        char isInit
 ) {
     int result;
     switch (type) {
         case FAT12: {
             if (bootPath == NULL) result = createEmptyFat12img(imgPath, volumeLabel);
-            else result = createCustomBootFat12img(imgPath, bootPath);
+            else result = createCustomBootFat12img(imgPath, bootPath, isInit);
             if (result == NO_FIND) {
                 printf("not find boot file.\n");
                 return NO_FIND;
@@ -249,14 +271,17 @@ int badCommand() {
  * @param programName - 程序名
  */
 void help(char* programName) {
+    printf("%s Version: %s\n", programName, FATIMG_VERSION);
     printf("Usage: %s <image file> [options]...\n", programName);
     printf("Options: \n");
     printf("  %-15s\t%s\n", "--help", "Display this information.");
+    printf("  %-15s\t%s\n", "--version", "Display this version information.");
     printf("  %-15s\t%s\n", "-cp <dest file>", "Copy dest file to FAT12 image. \n\t\t\tThis command can only be used alone.\n");
     printf("  %-15s\t%s\n", "-b  <boot file>", "Create a standard FAT12 image and init the image with boot file.");
     printf("  %-15s\t%s\n", "-f  <12/16/32/64>", "Create a FAT12/FAT16/FAT32/EXFAT image.");
     printf("  %-15s\t%s\n", "-s  <img size(MB)>", "Create a standard FAT12 image.");
     printf("  %-15s\t%s\n", "-sc <4/8/16/32/64>", "Specify sectors per cluster (Except FAT12).");
     printf("  %-15s\t%s\n", "-vl <volumeLabel>", "Volume label, maximum 11 characters.");
+    printf("  %-15s\t%s\n", "-i", "Format the floppy disk image while writing the boot file.");
 }
 

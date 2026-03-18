@@ -23,6 +23,7 @@ Options:
 -s  <img size(MB)>   Create a standard FAT12 image.
 -sc <4/8/16/32/64>   Specify sectors per cluster (Except FAT12).
 -vl <volumeLabel>    Volume label, maximum 11 characters.
+-i                   Format the floppy disk image while writing the boot file.
 ```
 
 ## fatimg使用示例 ##
@@ -35,6 +36,13 @@ fatimg imgName.img
 fatimg imgName.img -vl MYIMG
 
 # 创建一个自定义引导扇区的fat12镜像文件
+# (如果镜像文件存在则会格式化)
+# 注意：当前 FAT12 镜像每簇扇区数等参数固定使用默认值
+fatimg imgName.img -b boot.o -i
+
+# 创建一个自定义引导扇区的fat12镜像文件
+# (如果镜像文件存在则只更新引导扇区，保留原数据)
+# 注意：当前 FAT12 镜像每簇扇区数等参数固定使用默认值
 fatimg imgName.img -b boot.o
 
 # 复制一个文件到fat12镜像中

@@ -113,9 +113,10 @@ int deleteFileFromImg(FILE*, unsigned short);
  * 创建一个标准的自定义引导扇区的fat12软盘镜像(1.44M)
  * @param imgPath - 软盘镜像
  * @param bootPath - 引导扇区二进制文件路径
+ * @param isInit - 是否格式化镜像
  * @return
  */
-int createCustomBootFat12img(char *imgPath, char *bootPath) {
+int createCustomBootFat12img(char *imgPath, char *bootPath, char isInit) {
 
     FILE *bf, *fp;
     unsigned long int i;
@@ -137,30 +138,40 @@ int createCustomBootFat12img(char *imgPath, char *bootPath) {
         return BAD_FORMAT;
     }
 
-    // 新建镜像文件
-    fp = fopen(imgPath, "wb");
-    if(fp == NULL) return ERROR;
+    // 尝试以 "rb+" 模式打开镜像（读写模式，不抹除内容）
+    fp = fopen(imgPath, "rb+");
+    if (fp == NULL) {
+        // 文件不存在，使用 "wb" 创建新文件
+        fp = fopen(imgPath, "wb");
+        if (fp == NULL) return ERROR;
+        // 文件不存在必须格式化镜像文件
+        isInit = 1;
+    }
 
+    fseek(fp, 0, SEEK_SET); // 确保指针在文件开头
     // 将引导扇区信息写入软盘镜像
     fwrite(bootSector, BYTES_SECTOR, 1, fp);
 
-    // 写 FAT1 表信息
-    fwrite(fatFlag, 3, 1, fp);
-    for(i = 3; i < FAT_SECTOR_NUM * BYTES_SECTOR; i++) {
-        fputc(0, fp);
-    }
+    if (isInit) {
+        // 如果是新创建的文件，才需要初始化 FAT 表和填充用户数据区
+        // 写 FAT1 表信息
+        fwrite(fatFlag, 3, 1, fp);
+        for(i = 3; i < FAT_SECTOR_NUM * BYTES_SECTOR; i++) {
+            fputc(0, fp);
+        }
 
-    // 写 FAT2 表信息
-    // FAT2表紧随FAT1表
-    fwrite(fatFlag, 3, 1, fp);
-    for(i = 3; i < FAT_SECTOR_NUM * BYTES_SECTOR; i++){
-        fputc(0, fp);
-    }
+        // 写 FAT2 表信息
+        // FAT2表紧随FAT1表
+        fwrite(fatFlag, 3, 1, fp);
+        for(i = 3; i < FAT_SECTOR_NUM * BYTES_SECTOR; i++){
+            fputc(0, fp);
+        }
 
-    // 用0填充FAT12用户数据区
-    // 用户区数据区扇区数 = 总扇区数 - FAT表扇区数 * 2 - 引导扇区数
-    for(i = 0; i < (TOTAL_SECTORS - FAT_SECTOR_NUM * 2 - 1) * BYTES_SECTOR; i++){
-        fputc(0, fp);
+        // 用0填充FAT12用户数据区
+        // 用户区数据区扇区数 = 总扇区数 - FAT表扇区数 * 2 - 引导扇区数
+        for(i = 0; i < (TOTAL_SECTORS - FAT_SECTOR_NUM * 2 - 1) * BYTES_SECTOR; i++){
+            fputc(0, fp);
+        }
     }
 
     // 关闭文件

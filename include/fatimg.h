@@ -43,7 +43,7 @@ typedef char FILE_TYPE;
 /** 创建标准的空的fat12软盘镜像(1.44M) */
 int createEmptyFat12img(char*, char*);
 /** 创建一个标准的自定义引导扇区的fat12软盘镜像(1.44M) */
-int createCustomBootFat12img(char*, char*);
+int createCustomBootFat12img(char*, char*, char);
 /** 拷贝文件到FAT12软盘镜像 */
 int copyFileToFat12img(char*, char*, char);
 
