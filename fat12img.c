@@ -119,13 +119,7 @@ int deleteFileFromImg(FILE*, unsigned short);
 int createCustomBootFat12img(char *imgPath, char *bootPath, char isInit) {
 
     FILE *bf, *fp;
-    unsigned long int i;
     unsigned char bootSector[BYTES_SECTOR] = {0};
-    // FAT表的第0簇和第1簇为保留簇
-    // 其中第 0 字节（首字节）表示磁盘类型，其值与BPB中介质描述符（BPB_Media）对应的磁盘类型相同(0xf0-软盘，0xf8-硬盘)
-    // 第2，3字节代表 FAT 文件分配表标识符
-    // 从第四个字节开始与用户数据区所有的簇一一对应
-    char fatFlag[3] = {0xf0, 0xff, 0xff};
 
     // 打开引导扇区文件并将引导扇区信息读入数组
     bf = fopen(bootPath, "rb");
@@ -153,24 +147,52 @@ int createCustomBootFat12img(char *imgPath, char *bootPath, char isInit) {
     fwrite(bootSector, BYTES_SECTOR, 1, fp);
 
     if (isInit) {
-        // 如果是新创建的文件，才需要初始化 FAT 表和填充用户数据区
+        // 引导扇区后是两个 FAT 表（默认各占 9 扇区）
+        // FAT表的第 0 项和第 1 项为保留项，一个FAT表项 12 bit，两项共 24 bit，即 3 字节
+        // 其中第 0 字节（首字节）表示磁盘类型，其值与BPB中介质描述符（BPB_Media）对应的磁盘类型相同(0xf0-软盘，0xf8-硬盘)
+        // 第 2，3 字节代表 FAT 文件分配表标识符, 使用 0xff（文件结束符） 填充，避免被错误使用
+        // 从第四个字节开始与用户数据区所有的簇一一对应
+        unsigned char fatTable[9 * 512] = {0};
+        fatTable[0] = 0xF0; // 介质描述符
+        fatTable[1] = 0xFF; // 文件结束标记
+        fatTable[2] = 0xFF;
         // 写 FAT1 表信息
-        fwrite(fatFlag, 3, 1, fp);
-        for(i = 3; i < FAT_SECTOR_NUM * BYTES_SECTOR; i++) {
-            fputc(0, fp);
-        }
+        fwrite(fatTable, sizeof(fatTable), 1, fp);
+        // 写入 FAT2 (与 FAT1 完全相同)
+        fwrite(fatTable, sizeof(fatTable), 1, fp);
 
-        // 写 FAT2 表信息
-        // FAT2表紧随FAT1表
-        fwrite(fatFlag, 3, 1, fp);
-        for(i = 3; i < FAT_SECTOR_NUM * BYTES_SECTOR; i++){
-            fputc(0, fp);
+        // 写目录区
+        unsigned char rootDir[14 * 512] = {0};
+        // 设置根目录项卷标条目 (根目录第 0 个条目)
+        // 目录项名位置放卷标名
+        // 检查 bootSector[43] 开始的 11 字节
+        if (bootSector[43] == 0 || bootSector[43] == ' ') {
+            // 默认卷标
+            memcpy(&rootDir[0], "FATIMG     ", 11);
+        } else {
+            // 如果引导扇区里已经定义了卷标，则直接引用
+            memcpy(&rootDir[0], &bootSector[43], 11);
         }
+        // 目录项属性：0x08 - 卷标
+        rootDir[11] = 0x08;
+        unsigned short timeVal = formatTime();
+        unsigned short dateVal = formatDate();
+        // 强制转换或手动拆分写入，以保证跨平台安全
+        // 最后修改时间
+        rootDir[22] = (unsigned char)(timeVal & 0xFF);
+        rootDir[23] = (unsigned char)((timeVal >> 8) & 0xFF);
+        // 最后修改日期
+        rootDir[24] = (unsigned char)(dateVal & 0xFF);
+        rootDir[25] = (unsigned char)((dateVal >> 8) & 0xFF);
+        // 写入 14 个扇区的根目录区
+        fwrite(rootDir, sizeof(rootDir), 1, fp);
 
-        // 用0填充FAT12用户数据区
-        // 用户区数据区扇区数 = 总扇区数 - FAT表扇区数 * 2 - 引导扇区数
-        for(i = 0; i < (TOTAL_SECTORS - FAT_SECTOR_NUM * 2 - 1) * BYTES_SECTOR; i++){
-            fputc(0, fp);
+        // 用 0 填充 FAT12 用户数据区
+        // 用户区数据区扇区数 = 总扇区数 - 引导扇区数 - FAT表扇区数 * 2 - 根目录扇区数 = 总扇区数 - 数据区起始扇区号
+        unsigned char emptySector[512] = {0};
+        int dataSectorsCount = TOTAL_SECTORS - DATA_FIRST_SECTOR;
+        for (int i = 0; i < dataSectorsCount; i++) {
+            fwrite(emptySector, 512, 1, fp);
         }
     }
 
